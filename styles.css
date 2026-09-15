@@ -510,6 +510,60 @@
         margin-left: 0.2rem;
       }
 
+      .video-url-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+      .video-url-row {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+      .video-url-row input {
+        flex: 1;
+      }
+      .video-url-row .remove-video-url-btn {
+        flex-shrink: 0;
+        width: 2rem;
+        height: 2rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid var(--clr-border);
+        border-radius: var(--radius-md);
+        background: var(--clr-surface-2);
+        color: var(--clr-text-muted);
+        font-size: 1.1rem;
+        line-height: 1;
+        cursor: pointer;
+        transition: var(--transition);
+      }
+      .video-url-row .remove-video-url-btn:hover {
+        border-color: var(--clr-danger);
+        color: var(--clr-danger);
+      }
+      .add-video-url-btn {
+        align-self: flex-start;
+        margin-top: 0.15rem;
+        padding: 0.4rem 0.85rem;
+        font-size: 0.8rem;
+        font-weight: 600;
+        border: 1px dashed var(--clr-border);
+        border-radius: var(--radius-pill);
+        background: transparent;
+        color: var(--clr-primary);
+        cursor: pointer;
+        transition: var(--transition);
+      }
+      .add-video-url-btn:hover {
+        border-color: var(--clr-primary);
+        background: var(--clr-primary-light);
+      }
+      .website-video-edit-box .video-edit-player + .video-edit-player {
+        margin-top: 0.75rem;
+      }
+
       .delete-modal-content {
         max-width: 400px;
         text-align: center;

@@ -526,14 +526,80 @@ ${transcript}`;
         const addForm = document.getElementById('add-testimonial-form');
         const uploadStatus = document.getElementById('upload-status');
 
+        // --- Website Video-Edit: dynamic multi-URL list helpers ---
+        // Testimonials can have more than one website video edit, so these lists
+        // let the add/edit forms hold any number of URL inputs.
+        function createVideoUrlRow(containerId, value = '') {
+            const container = document.getElementById(containerId);
+            const row = document.createElement('div');
+            row.className = 'video-url-row';
+
+            const input = document.createElement('input');
+            input.type = 'url';
+            input.className = 'video-url-input';
+            input.placeholder = 'Website Video-Edit URL';
+            input.value = value || '';
+
+            const removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.className = 'remove-video-url-btn';
+            removeBtn.title = 'Remove';
+            removeBtn.innerHTML = '&times;';
+            removeBtn.addEventListener('click', () => {
+                if (container.querySelectorAll('.video-url-row').length > 1) {
+                    row.remove();
+                } else {
+                    input.value = '';
+                }
+            });
+
+            row.appendChild(input);
+            row.appendChild(removeBtn);
+            container.appendChild(row);
+        }
+
+        function setVideoUrlRows(containerId, values = []) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+            const nonEmpty = (values || []).filter(v => v);
+            if (nonEmpty.length === 0) {
+                createVideoUrlRow(containerId);
+            } else {
+                nonEmpty.forEach(v => createVideoUrlRow(containerId, v));
+            }
+        }
+
+        function getVideoUrls(containerId) {
+            const container = document.getElementById(containerId);
+            return Array.from(container.querySelectorAll('.video-url-input'))
+                .map(input => input.value.trim())
+                .filter(v => v !== '');
+        }
+
+        // Reads either the current array field or the legacy single-URL field,
+        // so testimonials saved before this change still display correctly.
+        function getWebsiteVideoEditUrls(data) {
+            if (Array.isArray(data.websiteVideoEditUrls)) return data.websiteVideoEditUrls.filter(v => v);
+            return data.websiteVideoEditUrl ? [data.websiteVideoEditUrl] : [];
+        }
+
+        document.getElementById('add-video-url-btn').addEventListener('click', () => {
+            createVideoUrlRow('website-video-edit-list');
+        });
+        document.getElementById('edit-add-video-url-btn').addEventListener('click', () => {
+            createVideoUrlRow('edit-website-video-edit-list');
+        });
+
         openAddModalBtn.addEventListener('click', () => {
             addModal.classList.add('active');
             uploadStatus.innerText = ""; // Clear old statuses
+            setVideoUrlRows('website-video-edit-list');
         });
 
         closeModalBtn.addEventListener('click', () => {
             addModal.classList.remove('active');
             addForm.reset();
+            setVideoUrlRows('website-video-edit-list');
         });
 
         // Close modal if clicking outside the content area
@@ -600,7 +666,7 @@ ${transcript}`;
                     imageUrl: document.getElementById('image-url').value,
                     frameUrl: document.getElementById('frame-url').value,
                     driveUrl: document.getElementById('drive-url').value,
-                    websiteVideoEditUrl: document.getElementById('website-video-edit-url').value,
+                    websiteVideoEditUrls: getVideoUrls('website-video-edit-list'),
                     additionalNotes: document.getElementById('additional-notes').value,
                     tags: finalTagsArray,
                     transcript: transcriptText,
@@ -616,6 +682,7 @@ ${transcript}`;
                 setTimeout(() => {
                     addModal.classList.remove('active');
                     addForm.reset();
+                    setVideoUrlRows('website-video-edit-list');
                 }, 1500);
 
             } catch (error) {
@@ -682,7 +749,7 @@ ${transcript}`;
                 card.dataset.id = data.id; // Add data-id for SortableJS
                 const displayImg = data.imageUrl || 'https://placehold.co/600x400/e5e7eb/a3a8b8?text=No+Image';
 
-                const videoIconHtml = data.websiteVideoEditUrl ? `
+                const videoIconHtml = getWebsiteVideoEditUrls(data).length > 0 ? `
                     <div class="video-indicator-icon" title="Has Website Video Edit">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect><line x1="7" y1="2" x2="7" y2="22"></line><line x1="17" y1="2" x2="17" y2="22"></line><line x1="2" y1="12" x2="22" y2="12"></line><line x1="2" y1="7" x2="7" y2="7"></line><line x1="2" y1="17" x2="7" y2="17"></line><line x1="17" y1="17" x2="22" y2="17"></line><line x1="17" y1="7" x2="22" y2="7"></line></svg>
                     </div>
@@ -1006,10 +1073,12 @@ suggestionsContainer.addEventListener('click', (e) => {
                             links.push(`<a href="${data.driveUrl}" target="_blank"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>Drive Folder</a>`);
                         }
 
+                        const websiteVideoEditUrls = getWebsiteVideoEditUrls(data);
                         const downloads = [];
-                        if (data.websiteVideoEditUrl) {
-                            downloads.push(`<a href="#" id="download-video-btn"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect><line x1="7" y1="2" x2="7" y2="22"></line><line x1="17" y1="2" x2="17" y2="22"></line><line x1="2" y1="12" x2="22" y2="12"></line><line x1="2" y1="7" x2="7" y2="7"></line><line x1="2" y1="17" x2="7" y2="17"></line><line x1="17" y1="17" x2="22" y2="17"></line><line x1="17" y1="7" x2="22" y2="7"></line></svg>Website Video</a>`);
-                        }
+                        websiteVideoEditUrls.forEach((url, index) => {
+                            const label = websiteVideoEditUrls.length > 1 ? `Website Video ${index + 1}` : 'Website Video';
+                            downloads.push(`<a href="#" class="download-video-btn" data-index="${index}"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect><line x1="7" y1="2" x2="7" y2="22"></line><line x1="17" y1="2" x2="17" y2="22"></line><line x1="2" y1="12" x2="22" y2="12"></line><line x1="2" y1="7" x2="7" y2="7"></line><line x1="2" y1="17" x2="7" y2="17"></line><line x1="17" y1="17" x2="22" y2="17"></line><line x1="17" y1="7" x2="22" y2="7"></line></svg>${label}</a>`);
+                        });
                         if (data.imageUrl) {
                             downloads.push(`<a href="#" id="download-headshot-btn"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>Headshot</a>`);
                         }
@@ -1071,12 +1140,14 @@ suggestionsContainer.addEventListener('click', (e) => {
 
 
 
-                                    ${data.websiteVideoEditUrl ? `
+                                    ${websiteVideoEditUrls.length > 0 ? `
                                     <div class="website-video-edit-box">
-                                        <h4>Website Video-Edit</h4>
+                                        <h4>Website Video-Edit${websiteVideoEditUrls.length > 1 ? 's' : ''}</h4>
+                                        ${websiteVideoEditUrls.map(url => `
                                         <div class="video-edit-player">
-                                            <video src="${data.websiteVideoEditUrl}" controls style="width:100%; height:auto; border-radius:var(--radius-md);"></video>
+                                            <video src="${url}" controls style="width:100%; height:auto; border-radius:var(--radius-md);"></video>
                                         </div>
+                                        `).join('')}
                                     </div>
                                     ` : ''}
 
@@ -1176,20 +1247,23 @@ suggestionsContainer.addEventListener('click', (e) => {
                                 } catch (error) { console.error('Error downloading image:', error); }
                             });
                         }
-                        // Add event listener for the new video download button
-                        const downloadVideoBtn = detailContent.querySelector('#download-video-btn');
-                        if (downloadVideoBtn) {
-                            downloadVideoBtn.addEventListener('click', async (e) => {
+                        // Add event listeners for the website video download buttons (one per video edit)
+                        const downloadVideoBtns = detailContent.querySelectorAll('.download-video-btn');
+                        downloadVideoBtns.forEach((btn) => {
+                            btn.addEventListener('click', async (e) => {
                                 e.preventDefault();
+                                const videoUrl = websiteVideoEditUrls[Number(btn.dataset.index)];
+                                if (!videoUrl) return;
                                 try {
-                                    const response = await fetch(data.websiteVideoEditUrl);
+                                    const response = await fetch(videoUrl);
                                     const blob = await response.blob();
                                     const url = URL.createObjectURL(blob);
                                     const tempLink = document.createElement('a');
                                     tempLink.href = url;
                                     const safeFilename = data.intervieweeName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-                                    const extension = data.websiteVideoEditUrl.split('.').pop().split('?')[0] || 'mp4';
-                                    tempLink.download = `website_video_${safeFilename}.${extension}`;
+                                    const extension = videoUrl.split('.').pop().split('?')[0] || 'mp4';
+                                    const suffix = websiteVideoEditUrls.length > 1 ? `_${Number(btn.dataset.index) + 1}` : '';
+                                    tempLink.download = `website_video_${safeFilename}${suffix}.${extension}`;
                                     document.body.appendChild(tempLink);
                                     tempLink.click();
                                     document.body.removeChild(tempLink);
@@ -1198,7 +1272,7 @@ suggestionsContainer.addEventListener('click', (e) => {
                                     console.error('Error downloading video:', error);
                                 }
                             });
-                        }
+                        });
                         // Add event listener for the new download button
                         const downloadBtn = detailContent.querySelector('#download-transcript-btn');
                         if (downloadBtn) {
@@ -1300,7 +1374,7 @@ suggestionsContainer.addEventListener('click', (e) => {
                     document.getElementById('edit-image-url').value = data.imageUrl || '';
                     document.getElementById('edit-frame-url').value = data.frameUrl || '';
                     document.getElementById('edit-drive-url').value = data.driveUrl || '';
-                    document.getElementById('edit-website-video-edit-url').value = data.websiteVideoEditUrl || ''; // Populate new field
+                    setVideoUrlRows('edit-website-video-edit-list', getWebsiteVideoEditUrls(data));
                     document.getElementById('edit-additional-notes').value = data.additionalNotes || '';
                     document.getElementById('edit-transcript').value = data.transcript || '';
                     document.getElementById('edit-tags').value = data.tags ? data.tags.join(', ') : '';
@@ -1316,6 +1390,7 @@ suggestionsContainer.addEventListener('click', (e) => {
         closeEditModalBtn.addEventListener('click', () => {
             editModal.classList.remove('active');
             editForm.reset();
+            setVideoUrlRows('edit-website-video-edit-list');
         });
 
         // Close edit modal if clicking outside the content area
@@ -1352,7 +1427,7 @@ suggestionsContainer.addEventListener('click', (e) => {
                   imageUrl: document.getElementById('edit-image-url').value,
                   frameUrl: document.getElementById('edit-frame-url').value,
                   driveUrl: document.getElementById('edit-drive-url').value,
-                  websiteVideoEditUrl: document.getElementById('edit-website-video-edit-url').value,
+                  websiteVideoEditUrls: getVideoUrls('edit-website-video-edit-list'),
                   additionalNotes: document.getElementById('edit-additional-notes').value,
                   transcript: document.getElementById('edit-transcript').value,
 
@@ -1369,6 +1444,7 @@ suggestionsContainer.addEventListener('click', (e) => {
               setTimeout(() => {
                   editModal.classList.remove('active');
                   editForm.reset();
+                  setVideoUrlRows('edit-website-video-edit-list');
               }, 1000);
 
           } catch (error) {
