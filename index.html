@@ -238,46 +238,12 @@
                     <div class="ai-section">
                         <div class="form-group">
                             <label for="edit-ai-summary">Transcript Summary</label>
-                            <textarea id="edit-ai-summary" rows="5" placeholder="AI Summary text will load here..."></textarea>
+                            <textarea id="edit-ai-summary" rows="5" placeholder="Summary (optional)"></textarea>
                         </div>
 
                         <div class="form-group">
                             <label for="edit-tags">Tags (comma separated)</label>
                             <input type="text" id="edit-tags" placeholder="Tags (comma separated)">
-                        </div>
-
-                        <div class="form-group" style="margin-top: 0.5rem; margin-bottom: 1rem;">
-                            <button type="button" id="regenerate-ai-btn" class="btn-ghost primary" style="align-self: flex-start; padding: 0.35rem 0.75rem; font-size: 0.8rem;">
-                                Analyze Content with AI
-                            </button>
-                            <span id="ai-generation-status" style="font-size: 0.82rem; margin-top: 0.25rem; display: flex; align-items: center; gap: 0.4rem;"></span>
-                        </div>
-
-                        <div id="ai-staging-area" style="display: none; background: var(--clr-surface-2); border: 1px dashed var(--clr-primary); border-radius: var(--radius-md); padding: 1.25rem; margin-bottom: 1.25rem;">
-                            <h4 style="margin: 0 0 1rem 0; font-size: 0.8rem; color: var(--clr-primary); text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; gap: 0.3rem;">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L14.5 9L22 11.5L14.5 14L12 21L9.5 14L2 11.5L9.5 9L12 2Z"></path></svg>
-                                AI Analysis Suggestions (Draft)
-                            </h4>
-
-                            <div id="staged-summary-row" style="margin-bottom: 1.25rem; border-bottom: 1px dashed var(--clr-border); padding-bottom: 1rem;">
-                                <p style="font-size: 0.82rem; font-weight: 700; color: var(--clr-text-main); margin: 0 0 0.35rem 0;">Suggested Summary:</p>
-                                <p id="staged-summary-text" style="font-size: 0.85rem; color: var(--clr-text-muted); margin: 0 0 0.5rem 0; background: var(--clr-surface); padding: 0.75rem; border-radius: var(--radius-xs); border: 1px solid var(--clr-border); white-space: pre-wrap; line-height: 1.5; font-style: normal;"></p>
-
-                                <div style="display: flex; gap: 0.5rem;">
-                                    <button type="button" id="apply-summary-btn" class="btn-ghost primary" style="padding: 0.3rem 0.75rem; font-size: 0.75rem; display: inline-flex; align-items: center; gap: 0.2rem;">✅ Apply Summary</button>
-                                    <button type="button" id="dismiss-summary-btn" class="btn-ghost danger" style="padding: 0.3rem 0.75rem; font-size: 0.75rem; display: inline-flex; align-items: center; gap: 0.2rem;">❌ Dismiss</button>
-                                </div>
-                            </div>
-
-                            <div id="staged-tags-row" style="margin-bottom: 0.25rem;">
-                                <p style="font-size: 0.82rem; font-weight: 700; color: var(--clr-text-main); margin: 0 0 0.35rem 0;">Suggested Tags:</p>
-                                <p id="staged-tags-text" style="font-size: 0.85rem; color: var(--clr-text-muted); margin: 0 0 0.5rem 0; background: var(--clr-surface); padding: 0.5rem 0.75rem; border-radius: var(--radius-xs); border: 1px solid var(--clr-border); font-family: monospace;"></p>
-
-                                <div style="display: flex; gap: 0.5rem;">
-                                    <button type="button" id="apply-tags-btn" class="btn-ghost primary" style="padding: 0.3rem 0.75rem; font-size: 0.75rem; display: inline-flex; align-items: center; gap: 0.2rem;">✅ Apply Tags</button>
-                                    <button type="button" id="dismiss-tags-btn" class="btn-ghost danger" style="padding: 0.3rem 0.75rem; font-size: 0.75rem; display: inline-flex; align-items: center; gap: 0.2rem;">❌ Dismiss</button>
-                                </div>
-                            </div>
                         </div>
                     </div>
 

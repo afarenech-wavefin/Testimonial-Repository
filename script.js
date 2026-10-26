@@ -6,168 +6,6 @@
         from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 
-
-
-
-
-
-
-
-        // Replace the old generateAISummary block with this optimized script
-        // Updated client-side analyzer with automatic retry handling for 503/429 errors
-async function generateAIAnalysis(transcript, apiKeyPassedIn) {
-    if (!transcript || transcript.trim() === "") return { summary: "", tags: "" };
-
-    const url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent";
-    const prompt = `You are an expert executive assistant and corporate taxonomy master. Analyze the following testimonial transcript and generate two distinct metadata assets: an "AI Summary Card" and a list of up to 12 relevant lowercase categorization keywords.
-
-Format your entire response output layout strictly into these two sections, separated by a triple pipe delimiter line "|||" exactly like this:
-
-CHALLENGE: [1-2 sentences explaining the core business problem or software inefficiencies faced before using the product]
-
-SOLUTION: [1-2 sentences detailing specific features, tools, or service plans implemented to solve the problem]
-
-RESULTS & IMPACT: [1-2 sentences highlighting metrics, time savings, or emotional relief experienced]
-|||
-tag1, tag2, tag3, tag4, tag5
-
-CRITICAL RULES:
-1. Do NOT use markdown bolding or any asterisks (absolutely no **).
-2. Do NOT use nested bullet points, dashed list hyphens, or numbering structures.
-3. The tags segment must be a single line of lowercase, comma-separated keywords.
-4. The tags must avoid using the product name: "Wave"
-5. Provide raw string data only. Do not wrap the response inside conversational introduction or conclusion filler greetings.
-
-Transcript:
-${transcript}`;
-
-    const maxRetries = 3;
-    let delay = 1000; // Start with a 1-second delay
-
-    for (let attempt = 0; attempt <= maxRetries; attempt++) {
-        try {
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'x-goog-api-key': apiKeyPassedIn
-                },
-                body: JSON.stringify({
-                    contents: [{
-                        parts: [{ text: prompt }]
-                    }]
-                })
-            });
-
-            // If Gemini returns a 503 (Busy) or 429 (Rate Limit), pause and try again
-            if ((response.status === 503 || response.status === 429) && attempt < maxRetries) {
-                console.warn(`Gemini API reported status ${response.status}. Retrying in ${delay}ms... (Attempt ${attempt + 1}/${maxRetries})`);
-                await new Promise(resolve => setTimeout(resolve, delay));
-                delay *= 2; // Exponentially back off (1s -> 2s -> 4s)
-                continue;
-            }
-
-            if (!response.ok) throw new Error(`API Gateway error: ${response.statusText}`);
-
-            const data = await response.json();
-            const rawOutput = data.candidates[0].content.parts[0].text.trim();
-
-            const pieces = rawOutput.split('|||');
-            const summary = pieces[0] ? pieces[0].trim() : "Summary generation skipped.";
-            const tags = pieces[1] ? pieces[1].trim() : "";
-
-            return { summary, tags };
-        } catch (error) {
-            if (attempt === maxRetries) {
-                console.error("Gemini AI integration processing exception after retries:", error);
-                return { summary: "AI Evaluation failed due to temporary server capacity limits.", tags: "" };
-            }
-            // Fallback delay for network dropouts
-            await new Promise(resolve => setTimeout(resolve, delay));
-            delay *= 2;
-        }
-    }
-}
-
-
-
-       // Global memory variables to briefly store our staged data fragments local to this modal view
-        let stagedSummaryText = "";
-        let stagedTagsText = "";
-
-        // Helper function to check if both suggestions have been handled, closing the container automatically
-        function checkStagingCompletion() {
-            const summaryRow = document.getElementById('staged-summary-row');
-            const tagsRow = document.getElementById('staged-tags-row');
-            const stagingArea = document.getElementById('ai-staging-area');
-
-            // If both individual rows are hidden, shut the master container!
-            if (summaryRow.style.display === "none" && tagsRow.style.display === "none") {
-                stagingArea.style.display = "none";
-            }
-        }
-
-        document.getElementById('regenerate-ai-btn').addEventListener('click', async () => {
-            const transcriptText = document.getElementById('edit-transcript').value;
-            const genStatus = document.getElementById('ai-generation-status');
-            const genBtn = document.getElementById('regenerate-ai-btn');
-            const stagingArea = document.getElementById('ai-staging-area');
-
-            if (!transcriptText || transcriptText.trim() === "") {
-                genStatus.innerText = "Error: Please provide a transcript first.";
-                genStatus.style.color = "var(--clr-danger)";
-                return;
-            }
-
-            genBtn.disabled = true;
-            genStatus.innerHTML = `<div class="loading-spinner"></div> Loading secure credentials...`;
-            genStatus.style.color = "var(--clr-text-main)";
-            stagingArea.style.display = "none"; // Reset panel view visibility state
-
-            try {
-                const configRef = doc(db, 'config', 'geminiAPI');
-                const configSnap = await getDoc(configRef);
-
-                if (!configSnap.exists()) {
-                    throw new Error("Secure API credential mapping key definition row missing inside Firestore.");
-                }
-
-                const SECURE_GEMINI_KEY = configSnap.data().key;
-                genStatus.innerHTML = `<div class="loading-spinner"></div> Using AI to summarize transcript ...`;
-
-                // Run the optimized 2-for-1 backend query
-                const aiPayload = await generateAIAnalysis(transcriptText, SECURE_GEMINI_KEY);
-
-                // Store responses inside local memory variables
-                stagedSummaryText = aiPayload.summary;
-                stagedTagsText = aiPayload.tags;
-
-                // Populate our hidden staging visual fields
-                document.getElementById('staged-summary-text').innerText = stagedSummaryText;
-                document.getElementById('staged-tags-text').innerText = stagedTagsText;
-
-                // CRITICAL: Reset row visibility states back to visible for a fresh analysis run
-                document.getElementById('staged-summary-row').style.display = "block";
-                document.getElementById('staged-tags-row').style.display = "block";
-
-                // Reveal the staging dashboard container block smoothly
-                genStatus.innerText = "Analysis compiled below!";
-                genStatus.style.color = "var(--clr-success)";
-                stagingArea.style.display = "block";
-
-                // Auto-scroll within the scrollable modal container
-                stagingArea.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-
-            } catch (error) {
-                console.error(error);
-                genStatus.innerText = "Analysis compilation failure details: " + error.message;
-                genStatus.style.color = "var(--clr-danger)";
-            } finally {
-                genBtn.disabled = false;
-                setTimeout(() => { genStatus.innerHTML = ""; }, 4000);
-            }
-        });
-
         // --- Drag-and-Drop for Transcript File ---
         const transcriptTextArea = document.getElementById('transcript');
 
@@ -210,15 +48,6 @@ ${transcript}`;
                 }
             }
         }, false);
-        // --- NEW STAGING MANAGEMENT BUTTON CLICK ROUTERS ---
-
-        // 1. Summary Actions Row Click Handlers
-        document.getElementById('apply-summary-btn').addEventListener('click', () => {
-            document.getElementById('edit-ai-summary').value = stagedSummaryText;
-            document.getElementById('staged-summary-row').style.display = "none"; // Hide just the summary row
-            checkStagingCompletion();
-        });
-
         // --- Detail Page Search ---
         const detailSearchBar = document.getElementById('detail-search-bar');
         const detailClearSearchBtn = document.getElementById('detail-clear-search-btn');
@@ -338,28 +167,6 @@ ${transcript}`;
                 noResultsMsg.classList.remove('hidden');
             }
         }
-        document.getElementById('dismiss-summary-btn').addEventListener('click', () => {
-            document.getElementById('staged-summary-row').style.display = "none"; // Hide just the summary row
-            checkStagingCompletion();
-        });
-
-        // 2. Tags Actions Row Click Handlers
-        document.getElementById('apply-tags-btn').addEventListener('click', () => {
-            const existingTagsInput = document.getElementById('edit-tags').value.trim();
-            if (existingTagsInput) {
-                // Safe programmatic tag appending strategy while preserving structural comma rules
-                document.getElementById('edit-tags').value = `${existingTagsInput}, ${stagedTagsText}`;
-            } else {
-                document.getElementById('edit-tags').value = stagedTagsText;
-            }
-            document.getElementById('staged-tags-row').style.display = "none"; // Hide just the tags row
-            checkStagingCompletion();
-        });
-
-        document.getElementById('dismiss-tags-btn').addEventListener('click', () => {
-            document.getElementById('staged-tags-row').style.display = "none"; // Hide just the tags row
-            checkStagingCompletion();
-        });
 
 
         // Firebase Config
@@ -406,7 +213,7 @@ ${transcript}`;
         const logoLink = document.getElementById('logo-link');
 
         // --- Admin & Security ---
-        const ADMIN_EMAILS = ['jfilleti@waveapps.com']; // Add admin emails here
+        const ADMIN_EMAILS = ['afarenech@waveapps.com', 'andrew.farenech@hrblock.com']; // Add admin emails here
         let currentUserIsAdmin = false;
 
         // Layout Functions
@@ -483,7 +290,7 @@ ${transcript}`;
         // Auth State
         onAuthStateChanged(auth, (user) => {
             if (user) {
-                const email = user.email;
+                const email = (user.email || '').toLowerCase();
                 if (email.endsWith('@waveapps.com') || email.endsWith('@hrblock.com')) {
                     loginScreen.classList.add('hidden');
 
@@ -619,45 +426,13 @@ ${transcript}`;
         addForm.addEventListener('submit', async (e) => {
             e.preventDefault();
 
-            uploadStatus.innerHTML = `<div class="loading-spinner"></div> Secure verification in progress...`;
+            uploadStatus.innerHTML = `<div class="loading-spinner"></div> Saving testimonial...`;
             uploadStatus.style.color = "var(--clr-text-main)";
 
             try {
                 const testimonialsCol = collection(db, 'testimonials');
-                const rawManualTags = document.getElementById('tags').value.trim();
                 const transcriptText = document.getElementById('transcript').value;
-
-                let generatedSummary = "";
-                let finalTagsArray = [];
-
-                // Run background AI loop because transcript is verified mandatory
-                uploadStatus.innerHTML = `<div class="loading-spinner"></div> Using AI to generate summary and tags...`;
-
-                try {
-                    const configRef = doc(db, 'config', 'geminiAPI');
-                    const configSnap = await getDoc(configRef);
-                    if (!configSnap.exists()) throw new Error("Database configuration API row pointer references missing.");
-                    const SECURE_GEMINI_KEY = configSnap.data().key;
-
-                    // Compute unified 2-for-1 parameters
-                    const aiData = await generateAIAnalysis(transcriptText, SECURE_GEMINI_KEY);
-                    generatedSummary = aiData.summary;
-
-                    // Append or join logic loops depending on if manual inputs are present
-                    let compiledTagsString = aiData.tags;
-                    if (rawManualTags) {
-                        compiledTagsString = `${rawManualTags}, ${aiData.tags}`;
-                    }
-                    finalTagsArray = compiledTagsString.split(',').map(tag => tag.trim()).filter(tag => tag !== "");
-
-                } catch (aiError) {
-                    console.error("Background AI generation bypassed due to quota context block:", aiError);
-                    // Bulletproof backup plan: Write a friendly error message if you hit a daily 429 quota lock
-                    generatedSummary = "AI Summary processing pending. (Daily request limit reached during profile generation. Open Edit modal to retry computing.)";
-                    finalTagsArray = rawManualTags.split(',').map(tag => tag.trim()).filter(tag => tag !== "");
-                }
-
-                uploadStatus.innerHTML = `<div class="loading-spinner"></div> Writing document to cloud repository storage arrays...`;
+                const finalTagsArray = document.getElementById('tags').value.split(',').map(tag => tag.trim()).filter(tag => tag !== "");
 
                 await addDoc(testimonialsCol, {
                     intervieweeName: document.getElementById('interviewee-name').value,
@@ -670,13 +445,13 @@ ${transcript}`;
                     additionalNotes: document.getElementById('additional-notes').value,
                     tags: finalTagsArray,
                     transcript: transcriptText,
-                    aiSummary: generatedSummary,
+                    aiSummary: "",
                     createdAt: serverTimestamp(),
                     order: -Date.now()
                 });
 
                 uploadStatus.style.color = "var(--clr-success)";
-                uploadStatus.innerText = "Success! Testimonial added with background AI metadata.";
+                uploadStatus.innerText = "Success! Testimonial added.";
 
                 await loadTestimonials();
                 setTimeout(() => {
@@ -1131,7 +906,7 @@ suggestionsContainer.addEventListener('click', (e) => {
                                     </div>
 
 
-                                    ${data.aiSummary ? `
+                                    ${data.aiSummary && !/^AI (Summary processing pending|Evaluation failed)/.test(data.aiSummary) ? `
                                     <div class="ai-summary-box">
                                         <h4><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L14.5 9L22 11.5L14.5 14L12 21L9.5 14L2 11.5L9.5 9L12 2Z"></path></svg>AI Summary Card</h4>
                                         <p class="ai-summary-text">${data.aiSummary}</p>
@@ -1355,7 +1130,6 @@ suggestionsContainer.addEventListener('click', (e) => {
         const editStatus = document.getElementById('edit-status');
 
         async function openEditModal(id) {
-            document.getElementById('ai-staging-area').style.display = "none";
             currentActiveId = id;
             editModal.classList.add('active');
             editStatus.innerText = "Loading data...";
